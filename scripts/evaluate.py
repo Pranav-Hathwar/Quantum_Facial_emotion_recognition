@@ -3,7 +3,12 @@
     python evaluate.py --run ml/models/runs/hybrid_feature_extractor_q4l2_seed42
 """
 import argparse
+import sys
 from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
 
 from ml.config import get_settings
 from ml.evaluation.evaluate import evaluate_run
