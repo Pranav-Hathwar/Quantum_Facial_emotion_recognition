@@ -101,10 +101,11 @@ def fit(model: nn.Module, train_loader: DataLoader, val_loader: DataLoader, cfg:
         if val_f1 > best_f1:
             best_f1, best_epoch, bad = val_f1, epoch, 0
             torch.save({"state_dict": model.state_dict(), "meta": meta or {}, "epoch": epoch}, out_dir / "best.pt")
+            log(f"  --> [NEW BEST] Val Macro-F1: {best_f1:.4f} (Saved checkpoint to {out_dir / 'best.pt'})")
         else:
             bad += 1
             if bad >= cfg.patience:
-                log(f"early stopping at epoch {epoch} (best epoch {best_epoch})")
+                log(f"  [STOP] Early stopping triggered at epoch {epoch} (best epoch: {best_epoch} with Macro-F1: {best_f1:.4f})")
                 break
 
     history.update(best_epoch=best_epoch, best_val_macro_f1=best_f1, train_time_s=train_time,

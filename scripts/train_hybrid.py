@@ -36,7 +36,27 @@ if __name__ == "__main__":
     hp = {"n_qubits": a.qubits, "n_layers": a.q_layers, "backend": a.backend}
     cfg = TrainConfig(epochs=a.epochs, lr=a.lr, batch_size=a.batch_size, seed=a.seed, device=a.device)
     out = a.out or s.model_path / "runs" / f"{a.kind}_{a.mode}_q{a.qubits}l{a.q_layers}_seed{a.seed}"
+
+    print("=" * 70, flush=True)
+    print(f" QuantumVision: Training Hybrid Quantum Model ({a.kind.upper()})", flush=True)
+    print("=" * 70, flush=True)
+    print(f"  - Architecture:  ResNet50 + PennyLane VQC (RX/RY/RZ + CNOT ring)", flush=True)
+    print(f"  - Qubits:        {a.qubits}", flush=True)
+    print(f"  - VQC layers:    {a.q_layers}", flush=True)
+    print(f"  - Simulator:     {a.backend}", flush=True)
+    print(f"  - Device:        {a.device}", flush=True)
+    print(f"  - Epochs:        {a.epochs}", flush=True)
+    print(f"  - Batch size:    {a.batch_size}", flush=True)
+    print(f"  - Learning rate: {a.lr}", flush=True)
+    print(f"  - Seed:          {a.seed}", flush=True)
+    print(f"  - Output run:    {out}", flush=True)
+    print("=" * 70, flush=True)
+
     if a.mode == "fine_tuning":
         run_train_finetune(a.kind, a.data, out, cfg, hp, image_size=s.image_size)
     else:
         run_train_head(a.kind, a.cache, out, a.data, cfg, hp, use_flip=not a.no_flip)
+
+    print("=" * 70, flush=True)
+    print(f" [SUCCESS] Hybrid training complete! Weights saved to: {out / 'best.pt'}", flush=True)
+    print("=" * 70, flush=True)

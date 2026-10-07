@@ -30,7 +30,24 @@ if __name__ == "__main__":
     a = ap.parse_args()
     cfg = TrainConfig(epochs=a.epochs, lr=a.lr, batch_size=a.batch_size, seed=a.seed, device=a.device)
     out = a.out or s.model_path / "runs" / f"classical_{a.mode}_seed{a.seed}"
+
+    print("=" * 70, flush=True)
+    print(" QuantumVision: Training Classical ResNet50 (Model A)", flush=True)
+    print("=" * 70, flush=True)
+    print(f"  - Mode:          {a.mode}", flush=True)
+    print(f"  - Device:        {a.device}", flush=True)
+    print(f"  - Epochs:        {a.epochs}", flush=True)
+    print(f"  - Batch size:    {a.batch_size}", flush=True)
+    print(f"  - Learning rate: {a.lr}", flush=True)
+    print(f"  - Seed:          {a.seed}", flush=True)
+    print(f"  - Output run:    {out}", flush=True)
+    print("=" * 70, flush=True)
+
     if a.mode == "fine_tuning":
         run_train_finetune("classical", a.data, out, cfg, image_size=s.image_size)
     else:
         run_train_head("classical", a.cache, out, a.data, cfg, use_flip=not a.no_flip)
+
+    print("=" * 70, flush=True)
+    print(f" [SUCCESS] Classical training complete! Weights saved to: {out / 'best.pt'}", flush=True)
+    print("=" * 70, flush=True)

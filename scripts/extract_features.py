@@ -26,5 +26,24 @@ if __name__ == "__main__":
     ap.add_argument("--random-weights", action="store_true", help="SMOKE TEST ONLY: no pretrained weights")
     ap.add_argument("--limit", type=int, default=None, help="use only N images per split (smoke test)")
     a = ap.parse_args()
-    print(run_extract_features(a.data, a.cache, a.image_size, a.batch_size, a.device, a.weights,
-                               not a.random_weights, a.workers, not a.no_flip, a.limit))
+
+    print("=" * 70, flush=True)
+    print(" QuantumVision: ResNet-50 Feature Extraction", flush=True)
+    print("=" * 70, flush=True)
+    print(f"  - Device:        {a.device}", flush=True)
+    print(f"  - Batch size:    {a.batch_size}", flush=True)
+    print(f"  - Image size:    {a.image_size}x{a.image_size}", flush=True)
+    print(f"  - Pretrained:    {not a.random_weights} ({a.weights})", flush=True)
+    print(f"  - Flip copy:     {not a.no_flip}", flush=True)
+    print(f"  - Dataset path:  {a.data}", flush=True)
+    print(f"  - Cache path:    {a.cache}", flush=True)
+    print("=" * 70, flush=True)
+
+    meta = run_extract_features(a.data, a.cache, a.image_size, a.batch_size, a.device, a.weights,
+                                not a.random_weights, a.workers, not a.no_flip, a.limit)
+
+    print("=" * 70, flush=True)
+    print(" [SUCCESS] Feature extraction completed successfully!", flush=True)
+    print(f" Cached files are saved in: {a.cache}", flush=True)
+    print(f" Backbone latency: {meta.get('backbone_latency_ms_batch1', 0):.2f} ms/face", flush=True)
+    print("=" * 70, flush=True)
