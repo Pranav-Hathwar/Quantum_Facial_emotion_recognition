@@ -1,0 +1,17 @@
+__pycache__/
+*.pyc
+.venv/
+venv/
+.env
+.pytest_cache/
+node_modules/
+dist/
+# datasets, weights and generated artefacts are never committed
+data/fer2013/*
+!data/fer2013/.gitkeep
+data/*.csv
+ml/models/*
+!ml/models/.gitkeep
+*.pt
+*.pth
+*.onnx

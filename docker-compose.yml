@@ -1,0 +1,29 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: quantumvision
+      POSTGRES_PASSWORD: quantumvision
+      POSTGRES_DB: quantumvision
+    volumes: [pgdata:/var/lib/postgresql/data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U quantumvision"]
+      interval: 5s
+      retries: 10
+  backend:
+    build: { context: ., dockerfile: deploy/Dockerfile.backend }
+    env_file: [.env]
+    environment:
+      DATABASE_URL: postgresql+psycopg://quantumvision:quantumvision@postgres:5432/quantumvision
+      MODEL_PATH: /app/ml/models
+      CORS_ORIGINS: http://localhost:8080
+    volumes:
+      - ./ml/models:/app/ml/models          # trained checkpoints + comparison.json from your training run
+    depends_on:
+      postgres: { condition: service_healthy }
+  frontend:
+    build: { context: ., dockerfile: deploy/Dockerfile.frontend }
+    ports: ["8080:80"]
+    depends_on: [backend]
+volumes:
+  pgdata:
