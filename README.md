@@ -1,116 +1,262 @@
 # QuantumVision
 
-**Hybrid Quantum Deep Transfer Learning based Facial Emotion Recognition for Smart-City Surveillance**
+**Hybrid Quantum Deep Transfer Learning for Facial Emotion Recognition in Smart-City Surveillance**
 
-An academic implementation of *Chapter 12 – A Conceptual Framework for Hybrid Quantum Deep Transfer Learning for
-Emotion-Aware Surveillance in Next-Generation Smart Cities*.
+An academic reference implementation of *Chapter 12 – A Conceptual Framework for Hybrid Quantum Deep Transfer Learning for Emotion-Aware Surveillance in Next-Generation Smart Cities*.
 
-> **Limitations.** Facial emotion predictions are probabilistic estimates of facial expression. They do not establish
-> a person's mental state, intent or dangerousness. The quantum circuit runs on a **classical simulator**; **no quantum
-> advantage is claimed** unless the project's own measured benchmarks show it. Alerts are statistical, group-level
-> anomalies that require **human review**.
+> [!NOTE]
+> **Probabilistic Predictions & Ethical Safeguards:** Facial emotion predictions are probabilistic estimates of facial expression. They do not establish an individual's internal mental state, intent, or dangerousness. The quantum circuit runs on a **classical state-vector simulator**; **no quantum advantage or physical speed-up is claimed**. Alerts are statistical, group-level anomalies intended strictly for **human operator review**.
 
-## Pipeline
+---
 
+## Architecture & Pipeline
+
+```text
+Input Video/Image ──► Face Detection (YuNet / Haar) ──► Crop & Resize (224x224)
+                           │
+                           ▼
+              ResNet50 Transfer Learning (ImageNet, 2048-d)
+                           │
+             ┌─────────────┴─────────────┐
+             ▼                           ▼
+    Classical Feature (256-d)    Linear Reduction (2048 -> n_qubits)
+             │                           │
+             │                   Angle Encoding (R_y)
+             │                           │
+             │                   PennyLane Variational Quantum Circuit (VQC)
+             │                   [RX, RY, RZ rotations + CNOT ring topology]
+             │                           │
+             │                   Pauli-Z Expectation Measurement <Z>
+             └─────────────┬─────────────┘
+                           ▼
+            Concatenation & Fusion (256 + n_qubits)
+                           │
+                           ▼
+          Dense Classifier + Softmax (7 Emotions)
+     [Angry, Disgust, Fear, Happy, Sad, Surprise, Neutral]
+                           │
+                           ▼
+        Surveillance Stream / Anomaly Alert Engine
 ```
-image / camera -> face detection -> preprocessing -> ResNet50 (ImageNet transfer learning, 2048-d)
-  -> dimensionality reduction (Linear 2048 -> n_qubits) -> angle encoding (R_y)
-  -> variational quantum circuit (RX/RY/RZ + CNOT ring, PennyLane) -> Pauli-Z expectation values
-  -> fusion (concat classical 256-d + quantum n-d) -> dense + softmax -> 7 emotions -> analytics / anomaly alerts
+
+### Models Benchmarked
+
+All models use identical frozen ResNet50 representations, dataset splits, optimizer settings, and random seeds:
+
+| Model | Head Architecture | Purpose |
+|---|---|---|
+| **A (Classical baseline)** | `Linear(2048, 256) -> ReLU -> Dropout -> Linear(256, 7)` | Standard deep transfer learning benchmark |
+| **A′ (Control model)** | Identical to B, replacing the VQC with `tanh(Linear(n, n))` | Isolates whether changes stem from parameter count vs quantum circuit |
+| **B (Hybrid VQC)** | `Linear(2048, 4) -> R_y -> VQC(2 layers) -> <Z> -> Concat -> Linear(7)` | Quantum-classical hybrid architecture |
+
+---
+
+## Project Structure
+
+```text
+Quantum_Facial_emotion_recognition/
+├── backend/                  # FastAPI backend server
+│   ├── alembic/              # Database schema migrations
+│   └── app/                  # API routers, services, models, and WebSocket engine
+├── data/                     # Dataset directories (FER2013)
+├── deploy/                   # Production Dockerfiles and Nginx reverse proxy configuration
+├── docs/                     # Detailed architectural, API, and pipeline documentation
+│   ├── api.md
+│   ├── architecture.md
+│   ├── database.md
+│   ├── deployment.md
+│   ├── migrations.md
+│   ├── ml_pipeline.md
+│   └── quantum_pipeline.md
+├── frontend/                 # React 18 single-page application (Vite + Tailwind CSS)
+│   ├── src/
+│   │   ├── components/       # UI charts, overlays, layout, video feed
+│   │   ├── hooks/            # Authentication, polling, WebSocket hooks
+│   │   ├── pages/            # Dashboard, Live Surveillance, Image Analysis, etc.
+│   │   └── services/         # API client
+│   └── package.json
+├── logs/                     # Application and experiment run logs (.gitkeep)
+├── ml/                       # Core ML, PennyLane VQC, and preprocessing routines
+│   ├── classical/            # ResNet50 backbone and classical heads
+│   ├── evaluation/           # Metrics calculation and statistical comparison (McNemar)
+│   ├── preprocessing/        # Face detection (YuNet/Haar) and FER2013 parsing
+│   └── quantum/              # VQC circuit definitions, angle encoding, and measurements
+├── scripts/                  # CLI execution, training, extraction, and utility scripts
+│   ├── augment_dataset.py    # Training class balancing via data augmentation
+│   ├── compare.py            # Statistical model comparison generator
+│   ├── evaluate.py           # Model test evaluation runner
+│   ├── extract_features.py   # ResNet50 feature cache extractor
+│   ├── fetch_face_model.py   # YuNet face model downloader
+│   ├── finetune_backbone.py  # End-to-end backbone fine-tuning
+│   ├── make_report_figures.py# Publication plot generation
+│   ├── phase1_check.py       # Sanity checks
+│   ├── run_all.ps1           # Windows one-click pipeline runner
+│   ├── run_experiments.py    # Multi-seed training and benchmark runner
+│   ├── train_classical.py    # Classical model training script
+│   └── train_hybrid.py       # Hybrid VQC training script
+├── tests/                    # Comprehensive unit and integration test suite (Pytest)
+├── alembic.ini               # Database migration configuration
+├── docker-compose.yml        # Full-stack container deployment
+├── pytest.ini                # Pytest runner configuration
+└── requirements.txt          # Python dependencies
 ```
 
-Emotions: Angry, Disgust, Fear, Happy, Sad, Surprise, Neutral. Dataset: FER2013.
+---
 
-Models compared (identical frozen ResNet50 features, splits, optimiser and seeds):
+## Quick Start
 
-| Model | Head |
-|---|---|
-| A  Classical baseline | Linear(2048,256) → ReLU → Dropout → Linear(256,7) |
-| A′ Control | same, with a classical `tanh(Linear(n,n))` where the VQC would be (shows whether any gain is "quantum" or just "extra parameters") |
-| B  Hybrid | reduce → R_y encoding → VQC → ⟨Z⟩ → concat with classical features → Linear(7) |
+### 1. Prerequisites
 
-## Quick start
+* **Python 3.10+** (Python 3.12 recommended)
+* **Node.js 18+** & npm
+* *(Optional)* NVIDIA GPU with CUDA 12.x for accelerated training
 
-### 1. Environment (Windows PowerShell shown; Linux/macOS use `source .venv/bin/activate`)
+### 2. Environment Setup
 
 ```powershell
-python -m venv .venv ; .venv\Scripts\activate
-pip install torch torchvision --index-url https://download.pytorch.org/whl/cu121   # CUDA build for an NVIDIA GPU
+# Clone the repository
+git clone https://github.com/Pranav-Hathwar/Quantum_Facial_emotion_recognition.git
+cd Quantum_Facial_emotion_recognition
+
+# (Optional) Create and activate a virtual environment
+python -m venv .venv
+.venv\Scripts\activate   # On Linux/macOS: source .venv/bin/activate
+
+# Install PyTorch (CUDA build recommended if GPU is available)
+pip install torch torchvision --index-url https://download.pytorch.org/whl/cu121
+
+# Install requirements
 pip install -r requirements.txt
-copy .env.example .env      # then edit JWT_SECRET / ADMIN_PASSWORD
+
+# Create environment configuration
+copy .env.example .env   # On Linux/macOS: cp .env.example .env
 ```
 
-### 2. Data (FER2013 as a zip of image folders, or fer2013.csv)
+### 3. Running the Application
 
+#### Start the Backend (FastAPI)
 ```powershell
-python -m ml.preprocessing.zip_to_folders --zip archive.zip          # -> data/fer2013/{train,validation,test}/<emotion>/
-# or: python -m ml.preprocessing.csv_to_folders --csv fer2013.csv
-python scripts/fetch_face_model.py                                    # optional YuNet face model (else Haar cascade)
+# From repository root:
+py -3.12 -m uvicorn backend.app.main:app --port 8000 --host 127.0.0.1 --reload
 ```
+* **API Server:** http://127.0.0.1:8000
+* **Interactive OpenAPI Docs:** http://127.0.0.1:8000/docs
+* **Health Check:** http://127.0.0.1:8000/api/health
 
-### 3. Train and compare (needs internet once for the ImageNet ResNet50 weights)
-
+#### Start the Frontend (Vite + React)
 ```powershell
-python extract_features.py --device cuda                               # caches frozen ResNet50 features (once)
-python run_experiments.py --seeds 42 43 44 --device cuda               # trains A, A', B for each seed + evaluates on test
-python compare.py                                                      # writes ml/models/comparison.{json,md}
+cd frontend
+npm install
+npm run dev
 ```
+* **Web UI:** http://localhost:5173
 
-Fine-tuning (`layer4`/full network) is available with `--mode fine_tuning` in `train_classical.py` / `train_hybrid.py`.
-Everything shown in the app's **Model Performance** page comes from `comparison.json`; if it does not exist the page says so.
+#### Default Credentials
+* **Email:** `admin@quantumvision.local`
+* **Password:** `admin123` *(configurable in `.env`)*
 
-### 4. Run the app
+---
 
-```powershell
-uvicorn backend.app.main:app --reload --port 8000     # API + WebSocket, docs at /docs
-cd frontend ; npm install ; npm run dev                # http://localhost:5173
-```
+## Docker Deployment
 
-Login: the `ADMIN_EMAIL` / `ADMIN_PASSWORD` from `.env` (defaults `admin@quantumvision.local` / `admin123` – change them).
-Roles: `ADMIN` (everything, users, cameras), `OPERATOR` (acknowledge/resolve alerts), `VIEWER` (read-only).
-
-### 5. Docker (PostgreSQL + backend + frontend)
+To launch the full stack with PostgreSQL, FastAPI backend, and Nginx-served frontend:
 
 ```bash
-docker compose up --build        # app at http://localhost:8080 ; mount trained models in ./ml/models
+docker compose up --build
+```
+* Access the app at **http://localhost:8080**.
+
+---
+
+## Data Preparation & Training Pipeline
+
+### 1. Dataset Extraction
+Place your FER2013 archive zip in the root directory:
+```powershell
+py -3.12 -m ml.preprocessing.zip_to_folders --zip archive.zip
 ```
 
-## Application pages
+### 2. Training Set Augmentation & Class Balancing
+The original FER2013 training split exhibits severe class imbalance (e.g., `disgust` has only 436 samples while `happy` has 7,215). To prevent model bias and improve minority-class convergence, the training set is augmented to match the majority class (7,215 images per emotion).
 
-Dashboard · Live Surveillance (webcam or video file) · Image Analysis (multi-face) · Emotion Analytics ·
-Alerts (NEW/ACKNOWLEDGED/RESOLVED, LOW→CRITICAL, operator notes) · Quantum Circuit · Model Performance · Cameras · Settings.
-
-## Emotional-anomaly alerts
-
-No single emotion is treated as dangerous. An alert is raised only for a **group-level, sustained** shift of
-Fear/Surprise/Angry share relative to the camera's own rolling baseline (≥3 faces, ≥8 s inside a 20 s window,
-≥60 % of frames elevated, 60 s cooldown). Details: [docs/architecture.md](docs/architecture.md).
-
-## Testing
-
-```bash
-python -m pytest -q        # 59 tests (quantum circuit checked against an independent numpy state-vector, API, alerts, ...)
-cd frontend && npm run build
+```powershell
+py -3.12 scripts/augment_dataset.py
 ```
 
-## Honest status
+* **Augmentation Techniques**:
+  * Random horizontal flip ($p = 0.5$)
+  * Random small rotation ($-12^\circ$ to $+12^\circ$)
+  * Random translation jitter ($\pm 2\text{ px}$) with border reflection
+  * Subtle scale adjustment ($0.95\times$ to $1.05\times$)
+  * Contrast and brightness jitter ($\pm 15\%$)
+* **Evaluation Safeguard**: Augmentation is strictly applied to the **training set only**. The **validation** (3,589) and **test** (3,589) splits remain unaltered to guarantee unbiased evaluation benchmarks.
 
-**Measured results — FER2013 test split, 3 seeds (42, 43, 44), feature-extractor mode, trained on an RTX 4060 Laptop GPU on 2026-10-06.** Numbers come straight from `ml/models/comparison.json` (written by `compare.py`); they are not hand-entered and are reproducible with the commands above.
+#### Augmentation Statistics
 
-| Metric | Classical ResNet50 (A) | ResNet50 + classical layer (A′) | Hybrid ResNet50 + Quantum VQC (B) |
+| Emotion Class | Original Train Count | Augmented Images Added | Balanced Train Count | Validation Set (Untouched) | Test Set (Untouched) |
+|---|---|---|---|---|---|
+| **Angry** | 3,995 | **+3,220** | **7,215** | 467 | 491 |
+| **Disgust** | 436 | **+6,779** | **7,215** | 56 | 55 |
+| **Fear** | 4,097 | **+3,118** | **7,215** | 496 | 528 |
+| **Happy** | 7,215 | **+0** | **7,215** | 895 | 879 |
+| **Sad** | 4,830 | **+2,385** | **7,215** | 653 | 594 |
+| **Surprise** | 3,171 | **+4,044** | **7,215** | 415 | 416 |
+| **Neutral** | 4,965 | **+2,250** | **7,215** | 607 | 626 |
+| **Total** | **28,709** | **+21,796** | **50,505** | **3,589** | **3,589** |
+
+### 3. Cache Frozen Features
+```powershell
+python scripts/extract_features.py --device cuda
+```
+
+### 4. Run Multi-Seed Experiment
+```powershell
+python scripts/run_experiments.py --seeds 42 43 44 --device cuda
+python scripts/compare.py
+```
+This generates `ml/models/comparison.json` and `ml/models/comparison.md` containing aggregate metrics and McNemar statistical tests.
+
+---
+
+## Empirical Benchmark Results
+
+**FER2013 test split, 3 seeds (42, 43, 44), feature-extractor mode, trained on an NVIDIA RTX 4060 Laptop GPU:**
+
+| Metric | Classical ResNet50 (A) | Fair Control (A′) | Hybrid ResNet50 + VQC (B) |
 |---|---|---|---|
-| Accuracy | 0.5493 ± 0.0104 | 0.5528 ± 0.0048 | 0.5547 ± 0.0055 |
-| Macro F1 | 0.5191 ± 0.0147 | 0.5243 ± 0.0126 | 0.5233 ± 0.0077 |
-| Training time (s) | 129 ± 32 | 181 ± 2 | 1837 ± 643 |
-| Inference (ms/face, total) | 13.2 | 14.8 | 53.4 |
-| Head parameters | 526,343 | 534,587 | 534,591 (24 quantum) |
+| **Accuracy** | 0.5493 ± 0.0104 | 0.5528 ± 0.0048 | **0.5547 ± 0.0055** |
+| **Macro F1** | 0.5191 ± 0.0147 | **0.5243 ± 0.0126** | 0.5233 ± 0.0077 |
+| **Training Time (s)** | **129 ± 32** | 181 ± 2 | 1837 ± 643 |
+| **Inference (ms/face)** | **13.2 ms** | 14.8 ms | 53.4 ms |
+| **Head Parameters** | 526,343 | 534,587 | 534,591 *(24 quantum)* |
 
-* **No significant difference.** The hybrid's accuracy edge over the plain classical model is +0.0054, inside the seed-to-seed noise, and it is effectively tied with the fair control (A′, same wiring with a classical layer in place of the VQC). The exact McNemar test (classical vs hybrid) gives p = 0.52 / 0.001 / 0.96 across the three seeds — significant on only one, not consistently. There is **no quantum advantage and no speed-up**: the quantum circuit is a classical simulation (`default.qubit`), and the hybrid is ~14× slower to train and ~4× slower per face at inference.
-* The large training-time spread for the hybrid (±643 s) reflects two mid-run stalls while the laptop was under load, not the circuit itself; inference times were measured in isolation and are stable.
-* Predictions remain **probabilistic estimates of facial expression** and do not establish anyone's actual emotional state, intent, or dangerousness (see the disclaimer carried in every API response and in the UI).
+* **Empirical Analysis**: The hybrid model's accuracy difference (+0.0054 over baseline A) falls within seed-to-seed variance, and ties with the classical control model A′. McNemar statistical testing ($p = 0.52 / 0.001 / 0.96$) demonstrates no consistent statistical advantage.
+* **Simulation Overhead**: Because PennyLane simulates the quantum state vector classically, training latency is $\sim 14\times$ slower and inference is $\sim 4\times$ slower per face.
+
+---
+
+## Testing & Verification
+
+Run the full automated test suite:
+```powershell
+py -3.12 -m pytest -q
+```
+*(Tests include quantum state-vector simulation against NumPy, API endpoints, JWT security, face detectors, and anomaly alert engines.)*
+
+Validate frontend production build:
+```powershell
+cd frontend
+npm run build
+```
+
+---
 
 ## Documentation
 
-[docs/architecture.md](docs/architecture.md) · [docs/ml_pipeline.md](docs/ml_pipeline.md) ·
-[docs/quantum_pipeline.md](docs/quantum_pipeline.md) · [docs/api.md](docs/api.md) ·
-[docs/database.md](docs/database.md) · [docs/migrations.md](docs/migrations.md) · [docs/deployment.md](docs/deployment.md)
+* [Architecture Overview](docs/architecture.md)
+* [API Reference & WebSockets](docs/api.md)
+* [Database Schema & Storage Policy](docs/database.md)
+* [Database Migrations (Alembic)](docs/migrations.md)
+* [ML Training & Evaluation Pipeline](docs/ml_pipeline.md)
+* [PennyLane Quantum Circuit Specification](docs/quantum_pipeline.md)
+* [Deployment Guide](docs/deployment.md)

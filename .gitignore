@@ -1,12 +1,31 @@
+# Python & Environments
 __pycache__/
 *.pyc
 .venv/
 venv/
 .env
 .pytest_cache/
+
+# Node / Frontend
 node_modules/
 dist/
-# datasets, weights and generated artefacts are never committed
+/package-lock.json
+
+# Logs & temporary files
+*.log
+logs/*
+!logs/.gitkeep
+*.zip
+.DS_Store
+.vscode/
+.idea/
+
+# Database files
+*.db
+*.sqlite
+*.sqlite3
+
+# Datasets, weights and generated artefacts are never committed
 data/fer2013/*
 !data/fer2013/.gitkeep
 data/*.csv
@@ -15,3 +34,4 @@ ml/models/*
 *.pt
 *.pth
 *.onnx
+
