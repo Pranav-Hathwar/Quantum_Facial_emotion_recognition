@@ -81,13 +81,23 @@ Quantum_Facial_emotion_recognition/
 │   ├── evaluation/           # Metrics calculation and statistical comparison (McNemar)
 │   ├── preprocessing/        # Face detection (YuNet/Haar) and FER2013 parsing
 │   └── quantum/              # VQC circuit definitions, angle encoding, and measurements
+├── scripts/                  # CLI execution, training, extraction, and utility scripts
+│   ├── compare.py            # Statistical model comparison generator
+│   ├── evaluate.py           # Model test evaluation runner
+│   ├── extract_features.py   # ResNet50 feature cache extractor
+│   ├── fetch_face_model.py   # YuNet face model downloader
+│   ├── finetune_backbone.py  # End-to-end backbone fine-tuning
+│   ├── make_report_figures.py# Publication plot generation
+│   ├── phase1_check.py       # Sanity checks
+│   ├── run_all.ps1           # Windows one-click pipeline runner
+│   ├── run_experiments.py    # Multi-seed training and benchmark runner
+│   ├── train_classical.py    # Classical model training script
+│   └── train_hybrid.py       # Hybrid VQC training script
 ├── tests/                    # Comprehensive unit and integration test suite (Pytest)
-├── compare.py                # Statistical model comparison generator
-├── extract_features.py       # ResNet50 feature cache extractor
-├── requirements.txt          # Python dependencies
-├── run_experiments.py        # Reproducible multi-seed training suite
-├── train_classical.py        # Classical model training script
-└── train_hybrid.py           # Hybrid VQC training script
+├── alembic.ini               # Database migration configuration
+├── docker-compose.yml        # Full-stack container deployment
+├── pytest.ini                # Pytest runner configuration
+└── requirements.txt          # Python dependencies
 ```
 
 ---
@@ -167,13 +177,13 @@ python -m ml.preprocessing.zip_to_folders --zip archive.zip
 
 ### 2. Cache Frozen Features
 ```powershell
-python extract_features.py --device cuda
+python scripts/extract_features.py --device cuda
 ```
 
 ### 3. Run Multi-Seed Experiment
 ```powershell
-python run_experiments.py --seeds 42 43 44 --device cuda
-python compare.py
+python scripts/run_experiments.py --seeds 42 43 44 --device cuda
+python scripts/compare.py
 ```
 This generates `ml/models/comparison.json` and `ml/models/comparison.md` containing aggregate metrics and McNemar statistical tests.
 

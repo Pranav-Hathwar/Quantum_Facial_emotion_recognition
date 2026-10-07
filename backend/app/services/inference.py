@@ -102,8 +102,8 @@ class InferenceEngine:
         if pref != "auto":
             return pref
         if not kinds:
-            raise ModelUnavailableError("No trained model is available yet. Train one first (see README: train_classical.py / "
-                                        "train_hybrid.py).")
+            raise ModelUnavailableError("No trained model is available yet. Train one first (see README: scripts/train_classical.py / "
+                                        "scripts/train_hybrid.py).")
         return kinds[0]
 
     def get_bundle(self, kind: str | None = None) -> ModelBundle:
