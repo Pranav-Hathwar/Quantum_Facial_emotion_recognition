@@ -1,5 +1,0 @@
-﻿[fine-tune] unfreeze=layer4 epochs=1 bs=64 lr=0.0003 seed=42 limit=1024
-[classical/fine_tuning] trainable parameters=15,491,079
-epoch 01/1  loss 1.9168  train_acc 0.230  val_acc 0.326  val_macroF1 0.223  (39.3s)
-[fine-tune] best val macroF1=0.2233 epoch=1 time=1.3 min
-[fine-tune] saved backbone -> C:\Users\Pranav\OneDrive\Desktop\Minor_project\ml\models\backbone_ft.pt
