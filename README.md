@@ -82,6 +82,7 @@ Quantum_Facial_emotion_recognition/
 │   ├── preprocessing/        # Face detection (YuNet/Haar) and FER2013 parsing
 │   └── quantum/              # VQC circuit definitions, angle encoding, and measurements
 ├── scripts/                  # CLI execution, training, extraction, and utility scripts
+│   ├── augment_dataset.py    # Training class balancing via data augmentation
 │   ├── compare.py            # Statistical model comparison generator
 │   ├── evaluate.py           # Model test evaluation runner
 │   ├── extract_features.py   # ResNet50 feature cache extractor
@@ -172,15 +173,43 @@ docker compose up --build
 ### 1. Dataset Extraction
 Place your FER2013 archive zip in the root directory:
 ```powershell
-python -m ml.preprocessing.zip_to_folders --zip archive.zip
+py -3.12 -m ml.preprocessing.zip_to_folders --zip archive.zip
 ```
 
-### 2. Cache Frozen Features
+### 2. Training Set Augmentation & Class Balancing
+The original FER2013 training split exhibits severe class imbalance (e.g., `disgust` has only 436 samples while `happy` has 7,215). To prevent model bias and improve minority-class convergence, the training set is augmented to match the majority class (7,215 images per emotion).
+
+```powershell
+py -3.12 scripts/augment_dataset.py
+```
+
+* **Augmentation Techniques**:
+  * Random horizontal flip ($p = 0.5$)
+  * Random small rotation ($-12^\circ$ to $+12^\circ$)
+  * Random translation jitter ($\pm 2\text{ px}$) with border reflection
+  * Subtle scale adjustment ($0.95\times$ to $1.05\times$)
+  * Contrast and brightness jitter ($\pm 15\%$)
+* **Evaluation Safeguard**: Augmentation is strictly applied to the **training set only**. The **validation** (3,589) and **test** (3,589) splits remain unaltered to guarantee unbiased evaluation benchmarks.
+
+#### Augmentation Statistics
+
+| Emotion Class | Original Train Count | Augmented Images Added | Balanced Train Count | Validation Set (Untouched) | Test Set (Untouched) |
+|---|---|---|---|---|---|
+| **Angry** | 3,995 | **+3,220** | **7,215** | 467 | 491 |
+| **Disgust** | 436 | **+6,779** | **7,215** | 56 | 55 |
+| **Fear** | 4,097 | **+3,118** | **7,215** | 496 | 528 |
+| **Happy** | 7,215 | **+0** | **7,215** | 895 | 879 |
+| **Sad** | 4,830 | **+2,385** | **7,215** | 653 | 594 |
+| **Surprise** | 3,171 | **+4,044** | **7,215** | 415 | 416 |
+| **Neutral** | 4,965 | **+2,250** | **7,215** | 607 | 626 |
+| **Total** | **28,709** | **+21,796** | **50,505** | **3,589** | **3,589** |
+
+### 3. Cache Frozen Features
 ```powershell
 python scripts/extract_features.py --device cuda
 ```
 
-### 3. Run Multi-Seed Experiment
+### 4. Run Multi-Seed Experiment
 ```powershell
 python scripts/run_experiments.py --seeds 42 43 44 --device cuda
 python scripts/compare.py
