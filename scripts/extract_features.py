@@ -24,23 +24,41 @@ if __name__ == "__main__":
     ap.add_argument("--weights", choices=["v1", "v2"], default="v1")
     ap.add_argument("--no-flip", action="store_true", help="skip the flipped training copy")
     ap.add_argument("--random-weights", action="store_true", help="SMOKE TEST ONLY: no pretrained weights")
+    ap.add_argument("--backbone-pt", type=Path, default=None, help="Path to custom backbone weights (e.g. fine-tuned on AffectNet)")
+    ap.add_argument("--backbone-label", type=str, default=None, help="Label for feature cache metadata")
     ap.add_argument("--limit", type=int, default=None, help="use only N images per split (smoke test)")
     a = ap.parse_args()
 
     print("=" * 70, flush=True)
     print(" QuantumVision: ResNet-50 Feature Extraction", flush=True)
     print("=" * 70, flush=True)
-    print(f"  - Device:        {a.device}", flush=True)
-    print(f"  - Batch size:    {a.batch_size}", flush=True)
-    print(f"  - Image size:    {a.image_size}x{a.image_size}", flush=True)
-    print(f"  - Pretrained:    {not a.random_weights} ({a.weights})", flush=True)
-    print(f"  - Flip copy:     {not a.no_flip}", flush=True)
-    print(f"  - Dataset path:  {a.data}", flush=True)
-    print(f"  - Cache path:    {a.cache}", flush=True)
+    print(f"  - Device:          {a.device}", flush=True)
+    print(f"  - Batch size:      {a.batch_size}", flush=True)
+    print(f"  - Image size:      {a.image_size}x{a.image_size}", flush=True)
+    print(f"  - Pretrained:      {not a.random_weights} ({a.weights})", flush=True)
+    print(f"  - Custom Backbone: {a.backbone_pt}", flush=True)
+    print(f"  - Flip copy:       {not a.no_flip}", flush=True)
+    print(f"  - Dataset path:    {a.data}", flush=True)
+    print(f"  - Cache path:      {a.cache}", flush=True)
     print("=" * 70, flush=True)
 
+    backbone = None
+    backbone_label = a.backbone_label or "resnet50_imagenet"
+    if a.backbone_pt and a.backbone_pt.exists():
+        import torch
+        from ml.classical.backbone import ResNet50Backbone
+        print(f"  [INFO] Loading custom backbone weights from {a.backbone_pt}...", flush=True)
+        backbone = ResNet50Backbone(pretrained=False, mode="feature_extractor", weights=a.weights)
+        ckpt = torch.load(a.backbone_pt, map_location=a.device)
+        state = ckpt["state_dict"] if "state_dict" in ckpt else ckpt
+        state = {k.replace("net.", ""): v for k, v in state.items()}
+        backbone.net.load_state_dict(state, strict=False)
+        backbone = backbone.to(a.device)
+        backbone_label = a.backbone_label or "resnet50_affectnet"
+
     meta = run_extract_features(a.data, a.cache, a.image_size, a.batch_size, a.device, a.weights,
-                                not a.random_weights, a.workers, not a.no_flip, a.limit)
+                                not a.random_weights, a.workers, not a.no_flip, a.limit,
+                                backbone=backbone, backbone_label=backbone_label)
 
     print("=" * 70, flush=True)
     print(" [SUCCESS] Feature extraction completed successfully!", flush=True)

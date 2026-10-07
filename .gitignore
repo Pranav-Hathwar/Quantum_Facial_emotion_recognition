@@ -26,12 +26,33 @@ logs/*
 *.sqlite3
 
 # Datasets, weights and generated artefacts are never committed
-data/fer2013/*
-!data/fer2013/.gitkeep
-data/*.csv
+data/*
+data/raf_db/
+data/affectnet/
+data/sfew/
+data/fer2013/
+!data/.gitkeep
+!data/README*
+*.csv
+*.tsv
+
+# Image files & numpy caches (ignore all dataset and training images, preserve docs figures)
+*.jpg
+*.jpeg
+*.png
+*.bmp
+*.npy
+*.npz
+!docs/**/*
+
+# Weights & models
 ml/models/*
 !ml/models/.gitkeep
 *.pt
 *.pth
 *.onnx
+
+# Kaggle credentials
+kaggle.json
+.kaggle/
 

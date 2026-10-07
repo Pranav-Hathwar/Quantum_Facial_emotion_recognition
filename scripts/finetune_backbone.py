@@ -58,6 +58,7 @@ if __name__ == "__main__":
     ap.add_argument("--data", type=Path, default=s.dataset_path)
     ap.add_argument("--out", type=Path, default=s.model_path / "runs_finetune" / "classical_backbone")
     ap.add_argument("--cache", type=Path, default=s.model_path / "features")
+    ap.add_argument("--backbone-pt", type=Path, default=s.model_path / "backbone_ft.pt", help="Path to save backbone weights")
     ap.add_argument("--extract-batch", type=int, default=64)
     ap.add_argument("--skip-extract", action="store_true")
     ap.add_argument("--no-amp", action="store_true", help="disable mixed precision")
@@ -73,10 +74,11 @@ if __name__ == "__main__":
           f"epoch={hist['best_epoch']} time={ (time.perf_counter()-t0)/60:.1f} min")
 
     backbone = load_finetuned_backbone(a.out / "best.pt", weights="v1", unfreeze=a.unfreeze, device=a.device)
+    a.backbone_pt.parent.mkdir(parents=True, exist_ok=True)
     torch.save({"state_dict": {f"net.{k}": v for k, v in backbone.net.state_dict().items()},
                 "meta": {"source": "fine_tuned", "unfreeze": a.unfreeze, "seed": a.seed}},
-               s.model_path / "backbone_ft.pt")
-    print(f"[fine-tune] saved backbone -> {s.model_path / 'backbone_ft.pt'}")
+               a.backbone_pt)
+    print(f"[fine-tune] saved backbone -> {a.backbone_pt}")
 
     if a.skip_extract:
         raise SystemExit(0)

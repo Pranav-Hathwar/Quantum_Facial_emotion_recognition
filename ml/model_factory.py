@@ -54,5 +54,16 @@ def load_serving_model(ckpt_path: Path, device: str = "cpu", pretrained_backbone
         head.load_state_dict({k[len("head."):]: v for k, v in ckpt["state_dict"].items() if k.startswith("head.")})
     else:
         backbone = ResNet50Backbone(pretrained=pretrained_backbone, mode="feature_extractor", weights=weights)
+        # Check if fine-tuned AffectNet / custom facial backbone exists
+        models_dir = ckpt_path.parents[1] if ckpt_path.parent.parent.name == "runs" else ckpt_path.parents[2]
+        for bb_name in ("backbone_affectnet.pt", "backbone_ft.pt"):
+            bb_path = models_dir / bb_name
+            if bb_path.is_file():
+                bb_ckpt = torch.load(bb_path, map_location=device, weights_only=False)
+                bb_state = bb_ckpt.get("state_dict", bb_ckpt)
+                bb_state = {k.replace("net.", ""): v for k, v in bb_state.items()}
+                backbone.net.load_state_dict(bb_state, strict=False)
+                meta["backbone_weights_file"] = bb_name
+                break
         head.load_state_dict(ckpt["state_dict"])
     return backbone.eval().to(device), head.eval().to(device), meta
